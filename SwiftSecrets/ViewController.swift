@@ -6,29 +6,33 @@
 //
 
 import UIKit
+import SwiftKeychainWrapper
 
 class ViewController: UIViewController {
+    
+    let SECRET_KEY = "SWIFT_SECRETS_MESSAGE"
 
     @IBOutlet var secretsTextView: UITextView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
-    }
-    
-    func setupUI() {
         setupNavBar()
-        setupKeyboardAdjustment()
+        setupNotificationObservers()
     }
     
     func setupNavBar() {
         title = "Nothing to see here"
     }
     
-    func setupKeyboardAdjustment() {
+    func setupNotificationObservers() {
         let notificationCenter = NotificationCenter.default
+        
+        // Keyboard notification observers to adjust secretsTextView insets
         notificationCenter.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillHideNotification, object: nil)
         notificationCenter.addObserver(self, selector: #selector(adjustForKeyboard), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        
+        // Save stuff when user's leaving the app, or going in multitasking mode
+        notificationCenter.addObserver(self, selector: #selector(saveSecretMessage), name: UIApplication.willResignActiveNotification, object: nil)
     }
     
     @objc func adjustForKeyboard(notification: Notification) {
@@ -47,8 +51,24 @@ class ViewController: UIViewController {
         secretsTextView.scrollIndicatorInsets = secretsTextView.contentInset
     }
     
-
     @IBAction func autheticateTapped(_ sender: UIButton) {
+        unlockSecretMessage()
+    }
+    
+    func unlockSecretMessage() {
+        secretsTextView.isHidden = false
+        title = "Swift Secrets"
+        
+        let text = KeychainWrapper.standard.string(forKey: SECRET_KEY) ?? ""
+        secretsTextView.text = text
+    }
+    
+    @objc func saveSecretMessage() {
+        guard !secretsTextView.isHidden else { return }
+        KeychainWrapper.standard.set(secretsTextView.text, forKey: SECRET_KEY)
+        secretsTextView.resignFirstResponder()
+        secretsTextView.isHidden = true
+        title = "Nothing to see here"
     }
     
 }
